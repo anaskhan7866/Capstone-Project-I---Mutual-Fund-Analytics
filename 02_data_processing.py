@@ -8,14 +8,16 @@ import re
 def clean_and_process_data(raw_dir="data/raw", processed_dir="data/processed"):
     os.makedirs(processed_dir, exist_ok=True)
     
-    # 1. Clean 02_nav_history.csv
+# 1. Clean 02_nav_history.csv
     print("Cleaning 02_nav_history...")
     nav_df = pd.read_csv(f"{raw_dir}/02_nav_history.csv")
     nav_df['date'] = pd.to_datetime(nav_df['date'])
     nav_df = nav_df.sort_values(by=['amfi_code', 'date'])
     nav_df = nav_df.drop_duplicates(subset=['amfi_code', 'date'])
-    # Forward-fill missing NAVs (grouping by scheme)
-    nav_df = nav_df.set_index('date').groupby('amfi_code').apply(lambda x: x.asfreq('D').ffill()).reset_index(level=0, drop=True).reset_index()
+    
+    # Corrected forward-fill: isolates the 'nav' column so 'amfi_code' is safely retained
+    nav_df = nav_df.set_index('date').groupby('amfi_code')['nav'].apply(lambda x: x.asfreq('D').ffill()).reset_index()
+    
     # Validate NAV > 0
     nav_df = nav_df[nav_df['nav'] > 0]
     nav_df.to_csv(f"{processed_dir}/02_nav_history_clean.csv", index=False)
